@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Audio Sync Tools",
     "author": "tintwotin",
-    "version": (16, 1, 0), # FINAL FIX: Lowered threshold and repaired 'Sync to Active Strip'.
+    "version": (16, 1, 0),
     "blender": (2, 93, 0),
     "location": "Sequencer > Strip > Transform",
     "description": "A suite of tools for audio synchronization. Uses a definitive competitive verification system for maximum accuracy.",
@@ -16,7 +16,7 @@ import sys, subprocess, site, os, tempfile, shutil, importlib
 # --- Constants & Configuration ---
 VIDEO_EXTENSIONS = {'.mov', '.mp4', '.mkv', '.avi', '.mts', '.m2ts'}
 AUDIO_EXTENSIONS = {'.wav', '.aiff', '.aif', '.flac', '.mp3', '.ogg'}
-REQUIRED_LIBS = ["librosa", "scipy", "moviepy"] 
+REQUIRED_LIBS = ["librosa", "scipy", "tqdm", "imageio", "imageio_ffmpeg", "dotenv", "moviepy"] 
 PEAK_PROFILE_WINDOW_SEC = 1.5
 DURATION_TOLERANCE_SEC = 25.0
 ANALYSIS_DURATION_SEC = 90.0
@@ -32,6 +32,7 @@ def install_libs(missing_libs):
     try:
         subprocess.check_call([py_exec, "-m", "ensurepip"])
         for lib in missing_libs:
+            if lib == "dotenv": lib = "python-dotenv"
             print(f"Installing '{lib}'...")
             subprocess.check_call([py_exec, "-m", "pip", "install", lib, "--user", "--quiet"])
         return True
