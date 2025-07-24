@@ -16,7 +16,7 @@ import sys, subprocess, site, os, tempfile, shutil, importlib
 # --- Constants & Configuration ---
 VIDEO_EXTENSIONS = {'.mov', '.mp4', '.mkv', '.avi', '.mts', '.m2ts'}
 AUDIO_EXTENSIONS = {'.wav', '.aiff', '.aif', '.flac', '.mp3', '.ogg'}
-REQUIRED_LIBS = ["numpy", "scipy", "moviepy"] 
+REQUIRED_LIBS = ["librosa", "scipy", "moviepy"] 
 PEAK_PROFILE_WINDOW_SEC = 0.1
 DURATION_TOLERANCE_SEC = 15.0
 ANALYSIS_DURATION_SEC = 90.0
