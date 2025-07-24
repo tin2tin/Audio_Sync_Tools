@@ -48,7 +48,7 @@ This is the main, powerful feature for syncing all your daily rushes in one go.
 3.  Go to `Strip` > `Transform` > **Match and Sync Audio**.
 4.  The process will start in the background. You can monitor its progress in the Blender status bar at the bottom of the window. The UI will remain responsive.
 
-https://github.com/user-attachments/assets/2b5f383c-e21f-43f6-80e2-4f25da2b8f6a
+![match_sync_sound](https://github.com/user-attachments/assets/2b5f383c-e21f-43f6-80e2-4f25da2b8f6a)
 
 **IMPORTANT: First-Time Use**
 The very first time you run the operator, it will pause to install the necessary Python libraries. This requires an internet connection. The console will show the installation progress. After it reports success, you must **run the "Match and Sync Audio" operator a second time** to perform the sync. This is a one-time setup.
