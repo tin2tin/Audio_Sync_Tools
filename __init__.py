@@ -1,6 +1,6 @@
 bl_info = {
-    "name": "Professional Audio Sync Tools",
-    "author": "Your Name (Adapted from tintwotin/ChatGPT)",
+    "name": "Audio Sync Tools",
+    "author": "tintwotin",
     "version": (16, 1, 0), # FINAL FIX: Lowered threshold and repaired 'Sync to Active Strip'.
     "blender": (2, 93, 0),
     "location": "Sequencer > Strip > Transform",
@@ -16,7 +16,7 @@ import sys, subprocess, site, os, tempfile, shutil, importlib
 # --- Constants & Configuration ---
 VIDEO_EXTENSIONS = {'.mov', '.mp4', '.mkv', '.avi', '.mts', '.m2ts'}
 AUDIO_EXTENSIONS = {'.wav', '.aiff', '.aif', '.flac', '.mp3', '.ogg'}
-REQUIRED_LIBS = ["numpy", "scipy", "moviepy"] 
+REQUIRED_LIBS = ["librosa", "scipy", "moviepy"] 
 PEAK_PROFILE_WINDOW_SEC = 1.5
 DURATION_TOLERANCE_SEC = 25.0
 ANALYSIS_DURATION_SEC = 90.0
