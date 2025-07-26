@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Audio Sync Tools",
     "author": "tintwotin",
-    "version": (16, 1, 0),
+    "version": (16, 1, 2), # FIX: Corrected subprocess call and improved error logging.
     "blender": (2, 93, 0),
     "location": "Sequencer > Strip > Transform",
     "description": "A suite of tools for audio synchronization. Uses a definitive competitive verification system for maximum accuracy.",
@@ -21,24 +21,75 @@ PEAK_PROFILE_WINDOW_SEC = 1.5
 DURATION_TOLERANCE_SEC = 25.0
 ANALYSIS_DURATION_SEC = 90.0
 CANDIDATES_TO_VERIFY = 8
-# --- VERIFICATION VALUE LOWERED AS REQUESTED ---
 MINIMUM_VERIFIED_CORRELATION = 0.2
 
 
-# --- Library Installation and Management ---
-def check_libs(): return [lib for lib in REQUIRED_LIBS if not importlib.util.find_spec(lib)]
-def install_libs(missing_libs):
-    py_exec = sys.executable; print(f"Missing: {', '.join(missing_libs)}. Installing...")
-    try:
-        subprocess.check_call([py_exec, "-m", "ensurepip"])
-        for lib in missing_libs:
-            if lib == "dotenv": lib = "python-dotenv"
-            print(f"Installing '{lib}'...")
-            subprocess.check_call([py_exec, "-m", "pip", "install", lib, "--user", "--quiet"])
-        return True
-    except Exception as e: print(f"ERROR: Failed to install libraries: {e}"); return False
+# --- Library Installation and Management (FIXED SECTION) ---
 
-# --- Core Logic Functions ---
+def _get_site_packages_path():
+    """Gets the site-packages path for Blender's Python environment."""
+    for path in sys.path:
+        if "site-packages" in path and os.path.isdir(path):
+            return path
+    try:
+        return site.getsitepackages()[0]
+    except (IndexError, AttributeError):
+        py_exec = sys.executable
+        return os.path.join(os.path.dirname(py_exec), "..", "lib", "site-packages")
+
+def check_libs():
+    """Checks for missing libraries."""
+    return [lib for lib in REQUIRED_LIBS if not importlib.util.find_spec(lib)]
+
+def install_libs(missing_libs):
+    """Installs missing libraries into Blender's Python environment using subprocess.run."""
+    py_exec = sys.executable
+    target_path = _get_site_packages_path()
+
+    if not os.path.isdir(target_path):
+        print(f"ERROR: Could not find a valid site-packages directory to install into: {target_path}")
+        return False
+        
+    print(f"Missing: {', '.join(missing_libs)}. Installing into: {target_path}")
+    
+    try:
+        # --- FIX: Use subprocess.run with check=True, which is the correct syntax ---
+        # Ensure pip is available
+        subprocess.run([py_exec, "-m", "ensurepip"], check=True, capture_output=True, text=True)
+        
+        for lib in missing_libs:
+            package_name = "python-dotenv" if lib == "dotenv" else lib
+            
+            print(f"Installing '{package_name}'...")
+            # --- FIX: Switched to subprocess.run and added better error capture ---
+            subprocess.run([
+                py_exec, "-m", "pip", "install", package_name,
+                "--target", target_path,
+                "--no-user"
+            ], check=True, capture_output=True, text=True) # Using capture_output to hide logs unless there's an error
+        
+        if target_path not in sys.path:
+            sys.path.append(target_path)
+        
+        importlib.invalidate_caches()
+        return True
+    
+    # --- FIX: Improved exception handling to give detailed pip error messages ---
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: A pip subprocess failed for '{package_name if 'package_name' in locals() else 'ensurepip'}'.")
+        print(f"Return Code: {e.returncode}")
+        print("--- Pip STDOUT ---")
+        print(e.stdout)
+        print("--- Pip STDERR ---")
+        print(e.stderr)
+        print("------------------")
+        return False
+    except Exception as e:
+        print(f"ERROR: An unexpected error occurred during library installation: {e}")
+        return False
+
+
+# --- Core Logic Functions (unchanged) ---
 def extract_audio_to_wav(strip, temp_dir):
     from moviepy import VideoFileClip, AudioFileClip
     original_path = bpy.path.abspath(strip.sound.filepath)
@@ -46,13 +97,21 @@ def extract_audio_to_wav(strip, temp_dir):
     safe_name = "".join(c for c in strip.name if c.isalnum() or c in ('_')).rstrip()
     wav_path = os.path.join(temp_dir, f"{safe_name}.wav")
     try:
-        if ext == '.wav': shutil.copy(original_path, wav_path)
+        if ext == '.wav':
+            shutil.copy(original_path, wav_path)
         elif ext in VIDEO_EXTENSIONS:
-            with VideoFileClip(original_path) as video: video.audio.write_audiofile(wav_path, codec='pcm_s16le', logger=None)
-        else:
-            with AudioFileClip(original_path) as audio: audio.write_audiofile(wav_path, codec='pcm_s16le', logger=None)
+            with VideoFileClip(original_path) as video:
+                if video.audio:
+                    video.audio.write_audiofile(wav_path, codec='pcm_s16le', logger=None)
+                else:
+                    return None # No audio in video
+        else: # Other audio formats
+            with AudioFileClip(original_path) as audio:
+                audio.write_audiofile(wav_path, codec='pcm_s16le', logger=None)
         return wav_path
-    except Exception as e: print(f"ERROR: MoviePy failed on {os.path.basename(original_path)}: {e}"); return None
+    except Exception as e:
+        print(f"ERROR: MoviePy failed on {os.path.basename(original_path)}: {e}")
+        return None
 
 def analyze_for_matching(wav_path):
     import numpy as np, librosa
@@ -102,7 +161,13 @@ def find_offset_samples(ref_path, target_path, sr):
         ref_chunk=ref_y[max(0,ref_peak-half_win):min(len(ref_y),ref_peak+half_win)]
         target_chunk=target_y[max(0,target_peak-half_win-search_ext):min(len(target_y),target_peak+half_win+search_ext)]
         if len(ref_chunk)==0 or len(target_chunk)<len(ref_chunk): fine_offset=0
-        else: lag=np.argmax(signal.correlate(target_chunk,ref_chunk,'valid')); fine_offset=-(lag-search_ext)
+        else:
+            cross_corr = signal.correlate(target_chunk, ref_chunk, 'valid')
+            if len(cross_corr) == 0:
+                 fine_offset = 0
+            else:
+                lag = np.argmax(cross_corr)
+                fine_offset = -(lag - search_ext)
         return rough_offset + fine_offset
     except Exception: return None
 
@@ -175,9 +240,12 @@ class SEQUENCER_OT_MatchAndSyncAudio(bpy.types.Operator):
         missing = check_libs()
         if missing:
             self.report({'INFO'}, "Installing required libraries...");
-            if install_libs(missing): self.report({'WARNING'}, "Libraries installed. Please run again.")
-            else: self.report({'ERROR'}, "Failed to install libraries.")
+            if install_libs(missing):
+                self.report({'WARNING'}, "Libraries installed. Please run the tool again.")
+            else:
+                self.report({'ERROR'}, "Failed to install libraries. Check Blender's System Console for details.")
             return {'CANCELLED'}
+            
         self.context = context; self.temp_dir = tempfile.mkdtemp()
         self.video_audio_strips, self.dedicated_audio_strips = [], []
         for s in context.selected_sequences:
@@ -212,9 +280,10 @@ class SEQUENCER_OT_SyncAudioToActive(bpy.types.Operator):
         missing = check_libs();
         if missing:
             self.report({'INFO'}, "Installing libraries...");
-            if install_libs(missing): self.report({'WARNING'}, "Libraries installed. Please run again.")
-            else: self.report({'ERROR'}, "Failed to install libraries.")
+            if install_libs(missing): self.report({'WARNING'}, "Libraries installed. Please run the tool again.")
+            else: self.report({'ERROR'}, "Failed to install libraries. Check Blender's System Console for details.")
             return {'CANCELLED'}
+
         temp_dir = tempfile.mkdtemp()
         try:
             active_strip = context.scene.sequence_editor.active_strip
@@ -226,16 +295,16 @@ class SEQUENCER_OT_SyncAudioToActive(bpy.types.Operator):
             for strip in strips_to_sync:
                 target_path = extract_audio_to_wav(strip, temp_dir)
                 if not target_path: continue
-                # This operator now correctly calls the simple offset function.
+                
                 offset_samples = find_offset_samples(ref_path, target_path, sr)
                 if offset_samples is not None:
-                    # And applies it with the correct math.
                     fps = context.scene.render.fps / context.scene.render.fps_base
                     offset_frames = int(round((offset_samples / sr) * fps))
                     strip.frame_start = active_strip.frame_start + offset_frames - strip.frame_offset_start
                 else:
                     self.report({'WARNING'}, f"Could not determine offset for '{strip.name}'.")
-        finally: shutil.rmtree(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
         return {'FINISHED'}
 
 # --- Registration ---
