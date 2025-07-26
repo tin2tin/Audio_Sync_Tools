@@ -6,6 +6,8 @@ This add-on provides a suite of powerful, professional-grade tools for synchroni
 
 The add-on's flagship feature, **"Match and Sync Audio,"** uses a sophisticated, multi-stage algorithm to automatically identify which dedicated audio clips belong to which video clips and then performs a sample-accurate sync based on a clapperboard or other sharp, loud sound.
 
+https://github.com/user-attachments/assets/68d94c9d-5c7b-4cfa-81ae-b61e2daf753b
+
 ## Features
 
 -   **Automatic "Match and Sync Audio":**
@@ -48,8 +50,6 @@ This is the main, powerful feature for syncing all your daily rushes in one go.
 3.  Go to `Strip` > `Transform` > **Match and Sync Audio**.
 4.  The process will start in the background. You can monitor its progress in the Blender status bar at the bottom of the window. The UI will remain responsive.
 
-
-https://github.com/user-attachments/assets/68d94c9d-5c7b-4cfa-81ae-b61e2daf753b
 
 **IMPORTANT: First-Time Use**
 The very first time you run the operator, it will pause to install the necessary Python libraries. This requires an internet connection. The console will show the installation progress. After it reports success, you must **run the "Match and Sync Audio" operator a second time** to perform the sync. This is a one-time setup.
