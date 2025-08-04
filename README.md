@@ -84,6 +84,16 @@ The "Match and Sync" operator uses a definitive, multi-stage algorithm that mimi
 -   **The sync is slightly off.**
     -   The script relies on the loudest sound being the sync point. If there is a much louder sound than the clapperboard (e.g., a door slam) at the start of a take, it may use that as the reference. In these rare cases, a small manual adjustment may be needed.
 
+
+## Footage for Testing
+
+The Cosmonaut - by Nicolas Alcala
+
+https://archive.org/search?query=director%3A%22Nicolas+Alcala%22
+
+<img width="1137" height="724" alt="image" src="https://github.com/user-attachments/assets/93c8f7b9-d927-4ceb-b8ad-30e65d8dfe21" />
+
+
 ## License
 
 This add-on is licensed under the GPL.
